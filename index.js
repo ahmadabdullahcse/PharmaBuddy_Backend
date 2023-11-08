@@ -17,7 +17,11 @@ async function run() {
   try {
     await client.connect();
     const medicineCollection = client.db("pharma-buddy").collection("medicine");
+    const addMedicineCollection = client
+      .db("pharma-buddy")
+      .collection("pharmacyMedicine");
     const adminCollection = client.db("pharma-buddy").collection("admin");
+    const pharmacyCollection = client.db("pharma-buddy").collection("pharmacy");
     const userCollection = client.db("pharma-buddy").collection("user");
     const customerCollection = client.db("pharma-buddy").collection("customer");
     const feedbackCollection = client.db("pharma-buddy").collection("feedback");
@@ -32,6 +36,17 @@ async function run() {
         res.status(500).json({ message: "Failed to add medicine" });
       }
     });
+
+    // add medicine pharmacy end post
+    app.post("/addMedicine", async (req, res) => {
+      const medicine = req.body;
+      const result = await addMedicineCollection.insertOne(medicine);
+      if (result.insertedCount === 1) {
+        res.status(201).json({ message: "medicine added successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to add medicine" });
+      }
+    });
     // admin post
     app.post("/admin", async (req, res) => {
       const admin = req.body;
@@ -40,6 +55,16 @@ async function run() {
         res.status(201).json({ message: "Admin added successfully" });
       } else {
         res.status(500).json({ message: "Failed to add admin" });
+      }
+    });
+    // pharmacy post
+    app.post("/pharmacySignup", async (req, res) => {
+      const pharmacy = req.body;
+      const result = await pharmacyCollection.insertOne(pharmacy);
+      if (result.insertedCount === 1) {
+        res.status(201).json({ message: "pharmacy added successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to add pharmacy" });
       }
     });
 
@@ -78,10 +103,42 @@ async function run() {
       }
     });
 
+    // Add this route to your Express app
+    app.get("/pharmacies", async (req, res) => {
+      const query = {};
+      const cursor = pharmacyCollection.find(query);
+      const pharmacies = await cursor.toArray();
+      res.send(pharmacies);
+    });
+
     //medicine get
     app.get("/medicine", async (req, res) => {
       const query = {};
       const cursor = medicineCollection.find(query);
+      const medicines = await cursor.toArray();
+      res.send(medicines);
+    });
+
+    //pharmacySignup get
+    app.get("/pharmacySignup", async (req, res) => {
+      const query = {};
+      const cursor = pharmacyCollection.find(query);
+      const medicines = await cursor.toArray();
+      res.send(medicines);
+    });
+
+    //individual medicine get
+    app.get("/searchMedicinesInPharmacy/:email", async (req, res) => {
+      const { email } = req.params;
+      const { query } = req.query;
+
+      // Create a filter to search for medicines in the specified pharmacy
+      const filter = {
+        userInfo: email, // Filter by the pharmacy owner's email
+        title: { $regex: new RegExp(query, "i") }, // Case-insensitive search
+      };
+
+      const cursor = addMedicineCollection.find(filter);
       const medicines = await cursor.toArray();
       res.send(medicines);
     });
@@ -108,6 +165,14 @@ async function run() {
       const cursor = userCollection.find(query);
       const users = await cursor.toArray();
       res.send(users);
+    });
+
+    //add medicine pharmacy end get
+    app.get("/addMedicine", async (req, res) => {
+      const query = {};
+      const cursor = addMedicineCollection.find(query);
+      const addMedicine = await cursor.toArray();
+      res.send(addMedicine);
     });
 
     //customer get
