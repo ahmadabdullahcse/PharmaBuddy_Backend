@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { MongoClient } = require("mongodb");
+const { MongoClient, ObjectId } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -36,8 +36,8 @@ async function run() {
         res.status(500).json({ message: "Failed to add medicine" });
       }
     });
-
-    // add medicine pharmacy end post
+    
+    // add medicine pharmacy post
     app.post("/addMedicine", async (req, res) => {
       const medicine = req.body;
       const result = await addMedicineCollection.insertOne(medicine);
@@ -47,6 +47,8 @@ async function run() {
         res.status(500).json({ message: "Failed to add medicine" });
       }
     });
+    //...
+
     // admin post
     app.post("/admin", async (req, res) => {
       const admin = req.body;
@@ -91,6 +93,44 @@ async function run() {
       }
     });
 
+    // Update an existing user profile
+    app.put("/updateUser/:id", async (req, res) => {
+      try {
+        const userId = req.params.id;
+        const updatedUserData = req.body;
+
+        const session = client.startSession();
+        session.startTransaction();
+
+        try {
+          // Update user information
+          const result = await customerCollection.updateOne(
+            { _id: new ObjectId(userId) },
+            { $set: updatedUserData },
+            { session }
+          );
+
+          if (result.modifiedCount === 1) {
+            await session.commitTransaction();
+            session.endSession();
+            res.json({ message: "User profile updated successfully" });
+          } else {
+            await session.abortTransaction();
+            session.endSession();
+            res.status(404).json({ message: "User not found" });
+          }
+        } catch (error) {
+          await session.abortTransaction();
+          session.endSession();
+          console.error(error);
+          res.status(500).json({ message: "Internal server error" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
     //feedback post
     app.post("/feedback", async (req, res) => {
       const feedback = req.body;
@@ -117,6 +157,49 @@ async function run() {
       const cursor = medicineCollection.find(query);
       const medicines = await cursor.toArray();
       res.send(medicines);
+    });
+
+    // individual medicine get
+    app.get("/searchMedicinesInPharmacy/:email", async (req, res) => {
+      try {
+        const { email } = req.params;
+        const { query } = req.query;
+
+        // Create a filter to search for medicines in the specified pharmacy
+        const filter = {
+          userInfo: email, // Filter by the pharmacy owner's email
+          title: { $regex: new RegExp(query, "i") }, // Case-insensitive search
+        };
+
+        const cursor = addMedicineCollection.find(filter);
+        const medicines = await cursor.toArray();
+        res.send(medicines);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    // Delete a booking by ID
+    app.delete("/addMedicine/:id", async (req, res) => {
+      try {
+        const bookingId = req.params.id;
+        console.log("Deleting booking with ID:", bookingId);
+
+        const objectId = new ObjectId(bookingId);
+        const result = await addMedicineCollection.deleteOne({ _id: objectId });
+
+        console.log("Delete result:", result);
+
+        if (result.deletedCount === 1) {
+          res.json({ message: "Booking deleted successfully" });
+        } else {
+          res.status(404).json({ message: "Booking not found" });
+        }
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
     });
 
     //pharmacySignup get
