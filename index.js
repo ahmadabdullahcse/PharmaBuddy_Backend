@@ -36,7 +36,7 @@ async function run() {
         res.status(500).json({ message: "Failed to add medicine" });
       }
     });
-    
+
     // add medicine pharmacy post
     app.post("/addMedicine", async (req, res) => {
       const medicine = req.body;
@@ -131,6 +131,62 @@ async function run() {
       }
     });
 
+    // Add this route to your Express app
+    app.get("/pharmacies", async (req, res) => {
+      const query = {};
+      const cursor = pharmacyCollection.find(query);
+      const pharmacies = await cursor.toArray();
+      res.send(pharmacies);
+    });
+
+    // individual pharmacy information by email
+    app.get("/pharmacies/:email", async (req, res) => {
+      try {
+        const pharmacyEmail = req.params.email; // Corrected parameter name
+        const query = { email: pharmacyEmail }; // Corrected query field
+        const pharmacies = await pharmacyCollection.find(query).toArray();
+
+        if (!pharmacies || pharmacies.length === 0) {
+          return res
+            .status(404)
+            .json({ message: "No pharmacies found for the email" });
+        }
+
+        res.json(pharmacies);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    // individual pharmacy app
+    app.get("/medicinesByUser/:email", async (req, res) => {
+      try {
+        const userEmail = req.params.email;
+
+        const pharmacyQuery = { email: userEmail };
+        const pharmacies = await pharmacyCollection
+          .find(pharmacyQuery)
+          .toArray();
+
+        if (!pharmacies || pharmacies.length === 0) {
+          return res
+            .status(404)
+            .json({ message: "No pharmacies found for the email" });
+        }
+        const pharmacyEmail = pharmacies[0].email; 
+        const medicinesQuery = { userInfo: pharmacyEmail };
+        const medicines = await addMedicineCollection
+          .find(medicinesQuery)
+          .toArray();
+
+        res.json(medicines);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
     //feedback post
     app.post("/feedback", async (req, res) => {
       const feedback = req.body;
@@ -141,14 +197,6 @@ async function run() {
       } else {
         res.status(500).json({ message: "Failed to add feedback" });
       }
-    });
-
-    // Add this route to your Express app
-    app.get("/pharmacies", async (req, res) => {
-      const query = {};
-      const cursor = pharmacyCollection.find(query);
-      const pharmacies = await cursor.toArray();
-      res.send(pharmacies);
     });
 
     //medicine get
