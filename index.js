@@ -1,8 +1,11 @@
 const express = require("express");
+// const { ObjectId } = require("mongodb");
 const cors = require("cors");
 const { MongoClient, ObjectId } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 5000;
+//Models for database
+// const Order = require("./Model/Order");
 
 app.use(cors());
 app.use(express.json());
@@ -25,6 +28,7 @@ async function run() {
     const userCollection = client.db("pharma-buddy").collection("user");
     const customerCollection = client.db("pharma-buddy").collection("customer");
     const feedbackCollection = client.db("pharma-buddy").collection("feedback");
+    const orderCollection = client.db("pharma-buddy").collection("order");
 
     // medicine post
     app.post("/medicine", async (req, res) => {
@@ -174,7 +178,7 @@ async function run() {
             .status(404)
             .json({ message: "No pharmacies found for the email" });
         }
-        const pharmacyEmail = pharmacies[0].email; 
+        const pharmacyEmail = pharmacies[0].email;
         const medicinesQuery = { userInfo: pharmacyEmail };
         const medicines = await addMedicineCollection
           .find(medicinesQuery)
@@ -312,6 +316,81 @@ async function run() {
       const cursor = customerCollection.find(query);
       const customers = await cursor.toArray();
       res.send(customers);
+    });
+
+    //all user
+    app.get("/allUsers", async (req, res) => {
+      try {
+        const query = {};
+        const cursor = userCollection.find(query);
+        const users = await cursor.toArray();
+        const usersWithDetails = await Promise.all(
+          users.map(async (user) => {
+            const customerDetails = await customerCollection.findOne({
+              email: user.email,
+            });
+
+            return {
+              ...user,
+              customerDetails,
+            };
+          })
+        );
+
+        res.json(usersWithDetails);
+      } catch (error) {
+        console.error(error);
+        res
+          .status(500)
+          .json({ message: "Internal server error", error: error.message });
+      }
+    });
+
+    //Order
+    //create order
+    app.post("/order", async (req, res) => {
+      try {
+        const orderData = req.body;
+        const result = await orderCollection.insertOne(orderData);
+        res.status(201).json({
+          message: "Order created successfully",
+        });
+      } catch (error) {
+        console.error(error);
+        res
+          .status(500)
+          .json({ message: "Failed to create order", error: error.message });
+      }
+    });
+
+    // Get orders by user email with populated product details
+    app.get("/order/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const orders = await orderCollection.find({ email }).toArray();
+        const ordersWithProducts = await Promise.all(
+          orders.map(async (order) => {
+            const productDetails = await Promise.all(
+              order.products.map(async (product) => {
+                const productId = new ObjectId(product.productId);
+                return {
+                  ...product,
+                  productDetails: await medicineCollection.findOne({
+                    _id: productId,
+                  }),
+                };
+              })
+            );
+            return { ...order, products: productDetails };
+          })
+        );
+        res.json(ordersWithProducts);
+      } catch (error) {
+        console.error(error);
+        res
+          .status(500)
+          .json({ message: "Internal server error", error: error.message });
+      }
     });
   } finally {
   }
