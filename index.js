@@ -39,7 +39,7 @@ async function run() {
     app.post("/medicine", async (req, res) => {
       const medicine = req.body;
       const result = await medicineCollection.insertOne(medicine);
-      if (result.insertedCount === 1) {
+      if (result.acknowledged) {
         res.status(201).json({ message: "medicine added successfully" });
       } else {
         res.status(500).json({ message: "Failed to add medicine" });
@@ -50,7 +50,7 @@ async function run() {
     app.post("/addMedicine", async (req, res) => {
       const medicine = req.body;
       const result = await addMedicineCollection.insertOne(medicine);
-      if (result.insertedCount === 1) {
+      if (result.acknowledged) {
         res.status(201).json({ message: "medicine added successfully" });
       } else {
         res.status(500).json({ message: "Failed to add medicine" });
@@ -62,7 +62,7 @@ async function run() {
     app.post("/admin", async (req, res) => {
       const admin = req.body;
       const result = await adminCollection.insertOne(admin);
-      if (result.insertedCount === 1) {
+      if (result.acknowledged) {
         res.status(201).json({ message: "Admin added successfully" });
       } else {
         res.status(500).json({ message: "Failed to add admin" });
@@ -72,7 +72,7 @@ async function run() {
     app.post("/pharmacySignup", async (req, res) => {
       const pharmacy = req.body;
       const result = await pharmacyCollection.insertOne(pharmacy);
-      if (result.insertedCount === 1) {
+      if (result.acknowledged) {
         res.status(201).json({ message: "pharmacy added successfully" });
       } else {
         res.status(500).json({ message: "Failed to add pharmacy" });
@@ -83,7 +83,7 @@ async function run() {
     app.post("/user", async (req, res) => {
       const user = req.body;
       const result = await userCollection.insertOne(user);
-      if (result.insertedCount === 1) {
+      if (result.acknowledged) {
         res.status(201).json({ message: "User added successfully" });
       } else {
         res.status(500).json({ message: "Failed to add user" });
@@ -94,9 +94,8 @@ async function run() {
     app.post("/customer", async (req, res) => {
       const customer = req.body;
       const result = await customerCollection.insertOne(customer);
-      if (result.insertedCount === 1) {
-        res.send(result);
-        res.status(201).json({ message: "Customer added successfully" });
+      if (result.acknowledged) {
+        res.status(201).json(result);
       } else {
         res.status(500).json({ message: "Failed to add customer" });
       }
@@ -200,9 +199,8 @@ async function run() {
     app.post("/feedback", async (req, res) => {
       const feedback = req.body;
       const result = await feedbackCollection.insertOne(feedback);
-      if (result.insertedCount === 1) {
-        res.send(result);
-        res.status(201).json({ message: "feedback added successfully" });
+      if (result.acknowledged) {
+        res.status(201).json(result);
       } else {
         res.status(500).json({ message: "Failed to add feedback" });
       }
@@ -401,8 +399,14 @@ async function run() {
   }
 }
 
-run().catch(console.dir);
+const ready = run();
 
-app.listen(port, () => {
-  console.log(`server running on ${port}`);
-});
+// Only start the server when run directly (npm start), not when a test imports this file
+if (require.main === module) {
+  ready.catch(console.dir);
+  app.listen(port, () => {
+    console.log(`server running on ${port}`);
+  });
+}
+
+module.exports = { app, ready, client };
