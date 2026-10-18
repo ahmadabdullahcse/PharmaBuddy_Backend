@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 // const { ObjectId } = require("mongodb");
 const cors = require("cors");
@@ -11,11 +12,8 @@ app.use(cors());
 app.use(express.json());
 
 const uri =
-  "mongodb+srv://pharma-buddy:vtKKAzCpuSAKs5n2@cluster0.po7qsgl.mongodb.net/pharma-buddy?retryWrites=true&w=majority";
-const client = new MongoClient(uri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+  process.env.MONGODB_URI;
+const client = new MongoClient(uri);
 async function run() {
   try {
     await client.connect();
