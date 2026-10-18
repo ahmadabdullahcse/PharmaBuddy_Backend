@@ -141,6 +141,13 @@ async function run() {
       res.send(pharmacies);
     });
 
+    //To check if the app is alive
+    app.get("/health", (req, res) =>
+    {
+      res.json({ status: "ok"});
+    }
+    )
+
     // individual pharmacy information by email
     app.get("/pharmacies/:email", async (req, res) => {
       try {
