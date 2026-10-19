@@ -9,6 +9,10 @@ jobs:
   test-and-build:
     runs-on: ubuntu-latest
 
+    permissions: 
+      contents: read
+      packages: write
+
     services:
       mongo:
         image: mongo:7
@@ -29,3 +33,12 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: docker build -t pharmabuddy-api .
+      - name: Push image to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          IMAGE=ghcr.io/ahmadabdullahcse/pharmabuddy-api
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker tag pharmabuddy-api $IMAGE:latest
+          docker tag pharmabuddy-api $IMAGE:${GITHUB_SHA::7}
+          docker push $IMAGE:latest
+          docker push $IMAGE:${GITHUB_SHA::7}
