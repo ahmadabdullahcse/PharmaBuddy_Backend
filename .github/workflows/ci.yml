@@ -42,3 +42,25 @@ jobs:
           docker tag pharmabuddy-api $IMAGE:${GITHUB_SHA::7}
           docker push $IMAGE:latest
           docker push $IMAGE:${GITHUB_SHA::7}
+
+  deploy:
+    needs: test-and-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy new image
+        run: az containerapp update -n pharmabuddy-api -g pharmabuddy-rg --image ghcr.io/ahmadabdullahcse/pharmabuddy-api:${GITHUB_SHA::7}
+
+      - name: Smoke test
+        run: curl -fsS --retry 6 --retry-delay 10 --retry-all-errors https://pharmabuddy-api.purplewave-e1671062.uaenorth.azurecontainerapps.io/health
