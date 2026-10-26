@@ -1,6 +1,12 @@
 const { test, before, after } = require("node:test");
 const assert = require("node:assert");
 const request = require("supertest");
+
+// Tests insert fake data: refuse to run against anything but a local test database
+if (!/localhost|127\.0\.0\.1/.test(process.env.MONGODB_URI || "")) {
+  throw new Error("Set MONGODB_URI to a local test database, e.g. MONGODB_URI=mongodb://localhost:27017 npm test");
+}
+
 const { app, ready, client } = require("../index");
 
 before(async () => {
@@ -32,4 +38,14 @@ test("POST /customer responds once with 201", async () => {
   const res = await request(app).post("/customer").send({ email: "t" + Date.now() + "@test.com" });
   assert.strictEqual(res.status, 201);
   assert.ok(res.body.insertedId);
+});
+
+test("POST /user never stores or returns a password", async () => {
+  const email = "pw" + Date.now() + "@test.com";
+  await request(app).post("/user").send({ email, password: "secret123" });
+
+  const res = await request(app).get("/user");
+  const saved = res.body.find((u) => u.email === email);
+  assert.ok(saved);
+  assert.strictEqual(saved.password, undefined);
 });

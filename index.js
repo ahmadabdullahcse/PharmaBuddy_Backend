@@ -10,6 +10,9 @@ const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+//Firebase handles passwords; this API never stores or returns them
+const withoutPassword = ({ password, ...rest}) => rest;
+const hidePassword = { projection: { password: 0 } };
 
     //To check if the app is alive
     app.get("/health", (req, res) =>
@@ -61,7 +64,7 @@ async function run() {
     // admin post
     app.post("/admin", async (req, res) => {
       const admin = req.body;
-      const result = await adminCollection.insertOne(admin);
+      const result = await adminCollection.insertOne(withoutPassword((admin)));
       if (result.acknowledged) {
         res.status(201).json({ message: "Admin added successfully" });
       } else {
@@ -71,7 +74,7 @@ async function run() {
     // pharmacy post
     app.post("/pharmacySignup", async (req, res) => {
       const pharmacy = req.body;
-      const result = await pharmacyCollection.insertOne(pharmacy);
+      const result = await pharmacyCollection.insertOne(withoutPassword((pharmacy)));
       if (result.acknowledged) {
         res.status(201).json({ message: "pharmacy added successfully" });
       } else {
@@ -82,7 +85,7 @@ async function run() {
     // user post
     app.post("/user", async (req, res) => {
       const user = req.body;
-      const result = await userCollection.insertOne(user);
+      const result = await userCollection.insertOne(withoutPassword(user));
       if (result.acknowledged) {
         res.status(201).json({ message: "User added successfully" });
       } else {
@@ -93,7 +96,7 @@ async function run() {
     //customer post
     app.post("/customer", async (req, res) => {
       const customer = req.body;
-      const result = await customerCollection.insertOne(customer);
+      const result = await customerCollection.insertOne(withoutPassword(customer));
       if (result.acknowledged) {
         res.status(201).json(result);
       } else {
@@ -114,7 +117,7 @@ async function run() {
           // Update user information
           const result = await customerCollection.updateOne(
             { _id: new ObjectId(userId) },
-            { $set: updatedUserData },
+            { $set: withoutPassword(updatedUserData) },
             { session }
           );
 
@@ -142,7 +145,7 @@ async function run() {
     // Add this route to your Express app
     app.get("/pharmacies", async (req, res) => {
       const query = {};
-      const cursor = pharmacyCollection.find(query);
+      const cursor = pharmacyCollection.find(query, hidePassword);
       const pharmacies = await cursor.toArray();
       res.send(pharmacies);
     });
@@ -152,7 +155,7 @@ async function run() {
       try {
         const pharmacyEmail = req.params.email; // Corrected parameter name
         const query = { email: pharmacyEmail }; // Corrected query field
-        const pharmacies = await pharmacyCollection.find(query).toArray();
+        const pharmacies = await pharmacyCollection.find(query, hidePassword).toArray();
 
         if (!pharmacies || pharmacies.length === 0) {
           return res
@@ -260,7 +263,7 @@ async function run() {
     //pharmacySignup get
     app.get("/pharmacySignup", async (req, res) => {
       const query = {};
-      const cursor = pharmacyCollection.find(query);
+      const cursor = pharmacyCollection.find(query, hidePassword);
       const medicines = await cursor.toArray();
       res.send(medicines);
     });
@@ -292,7 +295,7 @@ async function run() {
     //admin get
     app.get("/admin", async (req, res) => {
       const query = {};
-      const cursor = adminCollection.find(query);
+      const cursor = adminCollection.find(query, hidePassword);
       const admins = await cursor.toArray();
       res.send(admins);
     });
@@ -300,7 +303,7 @@ async function run() {
     //user get
     app.get("/user", async (req, res) => {
       const query = {};
-      const cursor = userCollection.find(query);
+      const cursor = userCollection.find(query, hidePassword);
       const users = await cursor.toArray();
       res.send(users);
     });
@@ -316,7 +319,7 @@ async function run() {
     //customer get
     app.get("/customer", async (req, res) => {
       const query = {};
-      const cursor = customerCollection.find(query);
+      const cursor = customerCollection.find(query, hidePassword);
       const customers = await cursor.toArray();
       res.send(customers);
     });
@@ -325,13 +328,13 @@ async function run() {
     app.get("/allUsers", async (req, res) => {
       try {
         const query = {};
-        const cursor = userCollection.find(query);
+        const cursor = userCollection.find(query, hidePassword);
         const users = await cursor.toArray();
         const usersWithDetails = await Promise.all(
           users.map(async (user) => {
-            const customerDetails = await customerCollection.findOne({
-              email: user.email,
-            });
+            const customerDetails = await customerCollection.findOne(
+              { email: user.email }, hidePassword
+            );
 
             return {
               ...user,
